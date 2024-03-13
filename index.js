@@ -6,18 +6,37 @@ const height = (canvas.height = 576);
 
 c.fillRect(0, 0, width, height);
 
-const gravity = 0.2;
+const gravity = 0.7;
 class Sprite {
-  constructor({ position, velocity }) {
+  constructor({ position, velocity, color = "red" }) {
     this.position = position;
     this.velocity = velocity;
+    this.width = 50;
     this.height = 150;
     this.lastKey;
+    this.attackBox = {
+      position: this.position,
+      width: 100,
+      height: 50,
+    };
+    this.color = color;
+    this.isAttacking;
   }
 
   draw() {
-    c.fillStyle = "red";
-    c.fillRect(this.position.x, this.position.y, 50, this.height);
+    c.fillStyle = this.color;
+    c.fillRect(this.position.x, this.position.y, this.width, this.height);
+
+    // attack box
+    if (this.isAttacking) {
+      c.fillStyle = "green";
+      c.fillRect(
+        this.attackBox.position.x,
+        this.attackBox.position.y,
+        this.attackBox.width,
+        this.attackBox.height
+      );
+    }
   }
 
   update() {
@@ -29,6 +48,13 @@ class Sprite {
     if (this.position.y + this.height + this.velocity.y >= height) {
       this.velocity.y = 0;
     } else this.velocity.y += gravity;
+  }
+
+  attack() {
+    this.isAttacking = true;
+    setTimeout(() => {
+      this.isAttacking = false;
+    }, 100);
   }
 }
 
@@ -52,6 +78,7 @@ const enemy = new Sprite({
     x: 0,
     y: 0,
   },
+  color: "blue",
 });
 
 const keys = {
@@ -61,18 +88,19 @@ const keys = {
   d: {
     pressed: false,
   },
-  ArrowRigh: {
+  w: {
+    pressed: false,
+  },
+  ArrowRight: {
     pressed: false,
   },
   ArrowLeft: {
     pressed: false,
   },
-  w: {
+  ArrowUp: {
     pressed: false,
   },
 };
-
-let lastKey;
 
 function animate() {
   window.requestAnimationFrame(animate);
@@ -82,10 +110,32 @@ function animate() {
   enemy.update();
 
   player.velocity.x = 0;
-  if (keys.a.pressed && lastKey === "a") {
+  enemy.velocity.x = 0;
+
+  //player movement
+  if (keys.a.pressed && player.lastKey === "a") {
     player.velocity.x = -5;
-  } else if (keys.d.pressed && lastKey === "d") {
+  } else if (keys.d.pressed && player.lastKey === "d") {
     player.velocity.x = 5;
+  }
+
+  // enemy movement
+  if (keys.ArrowLeft.pressed && enemy.lastKey === "ArrowLeft") {
+    enemy.velocity.x = -5;
+  } else if (keys.ArrowRight.pressed && enemy.lastKey == "ArrowRight") {
+    enemy.velocity.x = 5;
+  }
+
+  // detect for collision
+  if (
+    player.attackBox.position.x + player.attackBox.width >= enemy.position.x &&
+    player.attackBox.position.x <= enemy.position.x + enemy.width &&
+    player.attackBox.position.y + player.attackBox.height >= enemy.position.y &&
+    player.attackBox.position.y <= enemy.position.y + enemy.height &&
+    player.isAttacking
+  ) {
+    player.isAttacking = false;
+    console.log("go");
   }
 }
 
@@ -96,17 +146,21 @@ window.addEventListener("keydown", (event) => {
   switch (event.key) {
     case "d":
       keys.d.pressed = true;
-      lastKey = "d";
+      player.lastKey = "d";
       break;
     case "a":
       keys.a.pressed = true;
-      lastKey = "a";
+      player.lastKey = "a";
       break;
     case "w":
       keys.w.pressed = true;
-      player.velocity.y = -10;
+      player.velocity.y = -20;
+      break;
+    case " ":
+      player.attack();
+      break;
     case "ArrowRight":
-      keys.ArrowRigh.pressed = true;
+      keys.ArrowRight.pressed = true;
       enemy.lastKey = "ArrowRight";
       break;
     case "ArrowLeft":
@@ -114,8 +168,9 @@ window.addEventListener("keydown", (event) => {
       enemy.lastKey = "ArrowLeft";
       break;
     case "ArrowUp":
-      keys.w.pressed = true;
-      player.velocity.y = -10;
+      keys.ArrowUp.pressed = true;
+      enemy.velocity.y = -20;
+      break;
   }
 });
 
@@ -127,15 +182,21 @@ window.addEventListener("keyup", (event) => {
     case "a":
       keys.a.pressed = false;
       break;
+    case "w":
+      keys.w.pressed = false;
+      break;
+  }
+
+  switch (event.key) {
+    // enemy keys
     case "ArrowRight":
       keys.ArrowRight.pressed = false;
-      lastKey = "d";
       break;
     case "ArrowLeft":
       keys.ArrowLeft.pressed = false;
-      lastKey = "a";
       break;
-    case " ":
-      keys.space.pressed = true;
+    case "ArrowUp":
+      keys.ArrowUp.pressed = false;
+      break;
   }
 });
