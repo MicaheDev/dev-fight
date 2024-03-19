@@ -7,58 +7,26 @@ const height = (canvas.height = 576);
 c.fillRect(0, 0, width, height);
 
 const gravity = 0.7;
-class Sprite {
-  constructor({ position, velocity, color = "red" }) {
-    this.position = position;
-    this.velocity = velocity;
-    this.width = 50;
-    this.height = 150;
-    this.lastKey;
-    this.attackBox = {
-      position: this.position,
-      width: 100,
-      height: 50,
-    };
-    this.color = color;
-    this.isAttacking;
-  }
 
-  draw() {
-    c.fillStyle = this.color;
-    c.fillRect(this.position.x, this.position.y, this.width, this.height);
+const background = new Sprite({
+  position: {
+    x: 0,
+    y: 0,
+  },
+  imageSrc: "./assets/background.png",
+});
 
-    // attack box
-    if (this.isAttacking) {
-      c.fillStyle = "green";
-      c.fillRect(
-        this.attackBox.position.x,
-        this.attackBox.position.y,
-        this.attackBox.width,
-        this.attackBox.height
-      );
-    }
-  }
+const shop = new Sprite({
+  position: {
+    x: 600,
+    y: 128,
+  },
+  imageSrc: "./assets/shop.png",
+  scale: 2.75,
+  frameMax: 6
+});
 
-  update() {
-    this.draw();
-
-    this.position.x += this.velocity.x;
-    this.position.y += this.velocity.y;
-
-    if (this.position.y + this.height + this.velocity.y >= height) {
-      this.velocity.y = 0;
-    } else this.velocity.y += gravity;
-  }
-
-  attack() {
-    this.isAttacking = true;
-    setTimeout(() => {
-      this.isAttacking = false;
-    }, 100);
-  }
-}
-
-const player = new Sprite({
+const player = new Fighter({
   position: {
     x: 0,
     y: 0,
@@ -67,15 +35,23 @@ const player = new Sprite({
     x: 0,
     y: 0,
   },
+  offset: {
+    x: 0,
+    y: 0,
+  },
 });
 
-const enemy = new Sprite({
+const enemy = new Fighter({
   position: {
     x: 400,
     y: 100,
   },
   velocity: {
     x: 0,
+    y: 0,
+  },
+  offset: {
+    x: 50,
     y: 0,
   },
   color: "blue",
@@ -100,19 +76,26 @@ const keys = {
   ArrowUp: {
     pressed: false,
   },
+  ArrowDown: {
+    pressed: false,
+  },
 };
+
+decreaseTimer();
 
 function animate() {
   window.requestAnimationFrame(animate);
   c.fillStyle = "black";
   c.fillRect(0, 0, width, height);
+  background.update();
+  shop.update();
   player.update();
   enemy.update();
 
   player.velocity.x = 0;
   enemy.velocity.x = 0;
 
-  //player movement
+  // player movement
   if (keys.a.pressed && player.lastKey === "a") {
     player.velocity.x = -5;
   } else if (keys.d.pressed && player.lastKey === "d") {
@@ -128,14 +111,35 @@ function animate() {
 
   // detect for collision
   if (
-    player.attackBox.position.x + player.attackBox.width >= enemy.position.x &&
-    player.attackBox.position.x <= enemy.position.x + enemy.width &&
-    player.attackBox.position.y + player.attackBox.height >= enemy.position.y &&
-    player.attackBox.position.y <= enemy.position.y + enemy.height &&
+    rectangularCollision({
+      rectangle1: player,
+      rectangle2: enemy,
+    }) &&
     player.isAttacking
   ) {
     player.isAttacking = false;
+    enemy.health -= 5;
+    document.querySelector(".enemy-health").style.width = enemy.health + "%";
     console.log("go");
+  }
+
+  if (
+    rectangularCollision({
+      rectangle1: enemy,
+      rectangle2: player,
+    }) &&
+    enemy.isAttacking
+  ) {
+    enemy.isAttacking = false;
+    player.health -= 5;
+    document.querySelector(".player-health").style.width = player.health + "%";
+
+    console.log("enemy attack successful");
+  }
+
+  // end game based on health
+  if (enemy.health <= 0 || player.health <= 0) {
+    determineWinner({ player, enemy, timerId });
   }
 }
 
@@ -170,6 +174,9 @@ window.addEventListener("keydown", (event) => {
     case "ArrowUp":
       keys.ArrowUp.pressed = true;
       enemy.velocity.y = -20;
+      break;
+    case "ArrowDown":
+      enemy.attack();
       break;
   }
 });
